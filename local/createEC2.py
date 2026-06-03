@@ -332,12 +332,12 @@ def create_instance():
         waiter = ec2.get_waiter('instance_running')
         waiter.wait(InstanceIds=[instance_id])
 
-        desc = ec2.describe_instances(InstanceIds=[instance_id])
-        public_ip = desc['Reservations'][0]['Instances'][0].get('PublicIpAddress', 'N/A')
-
         if temp_ami_id:
             ec2.deregister_image(ImageId=temp_ami_id)
             print(f"Temporary AMI {temp_ami_id} deregistered.")
+
+        desc = ec2.describe_instances(InstanceIds=[instance_id])
+        public_ip = desc['Reservations'][0]['Instances'][0].get('PublicIpAddress', 'N/A')
 
         print(f"\nAdding your IP to the security group...")
         add_my_ip_to_sg(ec2, instance_id)
