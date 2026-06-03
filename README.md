@@ -59,11 +59,25 @@ python local/createEC2.py
 - Automatically adds your IP to the security group
 - Updates your SSH config so you can connect with `ssh <alias>`
 
+### Stop an EC2 instance
+```powershell
+python local/stopEC2.py
+```
+- Lists your running instances and stops the selected one
+- The public IP will change when you start it again — use `startEC2.py` to reconnect
+
+### Start a stopped EC2 instance
+```powershell
+python local/startEC2.py
+```
+- Lists your stopped instances and starts the selected one
+- Automatically adds your IP to the security group
+- Updates your SSH config with the new IP
+
 ### Delete an EC2 instance
 ```powershell
 python local/deleteEC2.py
 ```
-- Lists your running instances
 - Optionally creates a snapshot before terminating (recommended)
 - Requires typing `yes` to confirm
 
@@ -82,7 +96,7 @@ python local/checkAWS.py
 
 ## Connecting via SSH
 
-After running `createEC2.py`, connect with:
+After running `createEC2.py` or `startEC2.py`, connect with:
 ```powershell
 ssh <your-alias>
 ```
@@ -94,22 +108,26 @@ Your SSH config is updated automatically. The alias is whatever you entered when
 icacls "C:\Users\<you>\.ssh\<key>.pem" /inheritance:r /grant:r "$($env:USERNAME):(R)"
 ```
 
+### VS Code Remote SSH
+1. Install the **Remote - SSH** extension in VS Code
+2. Run `startEC2.py` first to update the SSH config
+3. `Ctrl+Shift+P` → `Remote-SSH: Connect to Host` → select your alias
+
 ---
 
 ## EC2 Scripts
 
-> Copy `setup.sh` to your EC2 and run it after first login.
+> Copy scripts to your EC2 and run them after first login.
 
+### Initial setup
 ```powershell
 # From your local machine
 scp ec2/setup.sh <alias>:~/
 ```
-
 ```bash
 # On the EC2
 bash setup.sh
 ```
-
 Select a mode:
 - **1. Fresh setup** — installs conda, git, vim, htop, and sets up your GitHub SSH key
 - **2. Health check** — verifies conda, GitHub SSH, and disk space on a restarted instance
@@ -117,6 +135,17 @@ Select a mode:
 After fresh setup, activate conda:
 ```bash
 source ~/.bashrc
+```
+
+### Cantera build environment
+```powershell
+# From your local machine
+scp ec2/environment.yaml <alias>:~/
+```
+```bash
+# On the EC2
+conda env create -f environment.yaml
+conda activate ct-build
 ```
 
 ---
@@ -134,9 +163,14 @@ source ~/.bashrc
 1. Push your code to GitHub
 2. `python local/deleteEC2.py` — create a snapshot and terminate
 
+### Stopping and resuming (same instance)
+1. `python local/stopEC2.py` — stop the instance
+2. `python local/startEC2.py` — start it again (SSH config updated automatically)
+3. `ssh <alias>` — connect
+
 ### Resuming from a snapshot
 1. `python local/createEC2.py` — select "Restore from snapshot"
-2. `ssh <alias>` — connect (run `bash setup.sh` and select health check to verify)
+2. `ssh <alias>` — connect
 
 ### Changing networks (office ↔ lab)
 ```powershell
