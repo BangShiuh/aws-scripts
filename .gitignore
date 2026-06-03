@@ -1,0 +1,5 @@
+student_credentials.csv
+*.pem
+__pycache__/
+*.pyc
+.env
