@@ -1,0 +1,51 @@
+name: ct-build
+channels:
+- conda-forge
+dependencies:
+- python=3.12  # Cantera supports Python 3.10-3.12
+- scons  # build system
+- gxx  # C++ compiler
+- binutils  # provides ar, ld, and other build tools
+- boost-cpp  # C++ dependency
+- hdf5  # optional C++ dependency
+# - highfive  # C++ dependency; uncomment to override Cantera default
+# - sundials  # uncomment to override Cantera default
+# - fmt  # uncomment to override Cantera default
+# - eigen  # uncomment to override Cantera default
+# - yaml-cpp  # uncomment to override Cantera default
+# - libgomp  # optional (OpenMP implementation when using GCC)
+- cython  # needed to build Python package
+- numpy  # needed to build Python package
+- pip  # needed to build Python package
+- wheel  # needed to build Python package
+- setuptools  # needed to build Python package
+- typing-extensions  # needed to build Python package
+- pytest  # needed for the Python test suite
+# - pytest-cov  # optional (needed if running with test coverage enabled)
+- ruamel.yaml  # needed for converter scripts
+- doxygen  # needed for code generation and documentation
+- jinja2  # needed for code generation
+# - pandas  # optional (needed for pandas interface and some examples)
+# - scipy  # optional (needed for some examples)
+# - matplotlib  # optional (needed for plots and some examples)
+# - python-graphviz  # optional (needed for reaction path diagrams and some examples)
+- ipython  # optional (needed for nicer interactive command line)
+# - jupyter  # optional (needed for Jupyter Notebook)
+# - sphinx  # optional (needed for documentation)
+# - pydata-sphinx-theme  # optional (needed for documentation)
+# - myst-nb  # optional (needed for documentation)
+# - myst-parser  # optional (needed for documentation)
+# - sphinx-gallery  # optional (needed for documentation)
+# - sphinx-argparse  # optional (needed for documentation)
+# - sphinx-copybutton  # optional (needed for documentation)
+# - sphinx-design  # optional (needed for documentation)
+# - sphinxcontrib-bibtex  # optional (needed for documentation)
+# - sphinxcontrib-matlabdomain  # optional (needed for documentation)
+# - sphinxcontrib-doxylink  # optional (needed for documentation)
+# - graphviz  # optional (needed for documentation)
+# - texlive-core  # optional (needed for documentation)
+- perl  # needed for bibtex/documentation
+# - coolprop  # optional (needed for some examples)
+# - pint  # optional (needed for some examples)
+# - pip:  # optional (list of PyPI managed packages)
+#   - "git+https://github.com/Cantera/sphinx-tags.git@main"  # optional (needed for documentation)
