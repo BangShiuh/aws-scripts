@@ -133,7 +133,9 @@ def start_instance():
         instance_id = instance['InstanceId']
         name = get_instance_name(instance)
 
-        ssh_alias = input(f"\nEnter your SSH alias for '{name}' (press Enter to skip): ").strip() or None
+        default_alias = name if name != '(no name)' else ''
+        alias_prompt = f"\nEnter your SSH alias for '{name}' (press Enter for '{default_alias}'): " if default_alias else f"\nEnter your SSH alias for '{name}' (press Enter to skip): "
+        ssh_alias = input(alias_prompt).strip() or (default_alias or None)
 
         print(f"\nStarting '{name}' ({instance_id})...")
         ec2.start_instances(InstanceIds=[instance_id])
