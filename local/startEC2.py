@@ -66,7 +66,12 @@ def prompt_instance(instances):
             print(f"Invalid choice. Enter a number between 1 and {len(instances)}.")
 
 def get_my_ip():
-    return urllib.request.urlopen('https://checkip.amazonaws.com').read().decode().strip()
+    for url in ['https://checkip.amazonaws.com', 'https://api.ipify.org', 'https://icanhazip.com']:
+        try:
+            return urllib.request.urlopen(url, timeout=5).read().decode().strip()
+        except Exception:
+            continue
+    raise RuntimeError("Could not determine public IP from any source.")
 
 def add_my_ip_to_sg(ec2, instance_id):
     my_ip = get_my_ip()
@@ -98,6 +103,14 @@ def add_my_ip_to_sg(ec2, instance_id):
                 print(f"SSH access granted for {my_ip}.")
             except ClientError as e:
                 print(f"Could not add SSH rule: {e.response['Error']['Message']}")
+
+def find_matching_ssh_aliases(instance_name):
+    """Return SSH Host aliases whose name contains the instance name (case-insensitive)."""
+    if not SSH_CONFIG_PATH.exists():
+        return []
+    content = SSH_CONFIG_PATH.read_text(encoding='utf-8-sig')
+    hosts = re.findall(r'^Host\s+(\S+)', content, re.MULTILINE)
+    return [h for h in hosts if instance_name.lower() in h.lower()]
 
 def update_ssh_config(alias, hostname):
     if not SSH_CONFIG_PATH.exists():
@@ -133,10 +146,6 @@ def start_instance():
         instance_id = instance['InstanceId']
         name = get_instance_name(instance)
 
-        default_alias = name if name != '(no name)' else ''
-        alias_prompt = f"\nEnter your SSH alias for '{name}' (press Enter for '{default_alias}'): " if default_alias else f"\nEnter your SSH alias for '{name}' (press Enter to skip): "
-        ssh_alias = input(alias_prompt).strip() or (default_alias or None)
-
         print(f"\nStarting '{name}' ({instance_id})...")
         ec2.start_instances(InstanceIds=[instance_id])
 
@@ -148,15 +157,27 @@ def start_instance():
         public_ip = desc['Reservations'][0]['Instances'][0].get('PublicIpAddress', 'N/A')
 
         print(f"\nAdding your IP to the security group...")
-        add_my_ip_to_sg(ec2, instance_id)
+        try:
+            add_my_ip_to_sg(ec2, instance_id)
+        except Exception as e:
+            print(f"Warning: could not update security group: {e}")
 
-        if ssh_alias and public_ip != 'N/A':
-            update_ssh_config(ssh_alias, public_ip)
+        if public_ip != 'N/A' and name != '(no name)':
+            matches = find_matching_ssh_aliases(name)
+            if matches:
+                for alias in matches:
+                    update_ssh_config(alias, public_ip)
+            else:
+                print(f"No SSH alias matching '{name}' found in config — skipping SSH config update.")
 
         print(f"\n=== Instance is Running! ===")
         print(f"Public IP: {public_ip}")
-        if ssh_alias:
-            print(f"\nTo connect: ssh {ssh_alias}")
+        if name != '(no name)':
+            aliases = find_matching_ssh_aliases(name)
+            if aliases:
+                print(f"\nTo connect: ssh {aliases[0]}")
+            else:
+                print(f"\nTo connect: ssh <user>@{public_ip}")
         else:
             print(f"\nTo connect: ssh <user>@{public_ip}")
         print(f"============================")

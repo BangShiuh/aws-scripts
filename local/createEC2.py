@@ -15,7 +15,14 @@ REGIONS = [
     ('eu-west-1',      'Europe (Ireland)'),
 ]
 
-INSTANCE_TYPES = ['t2.micro', 't3.micro', 't3.small', 't3.medium', 't3.xlarge']
+INSTANCE_TYPES = [
+    't2.micro', 't3.micro', 't3.small', 't3.medium', 't3.xlarge',
+    # GPU instances for ML
+    'g4dn.xlarge',   # 1x T4 16 GB  — best price/perf for training
+    'g4dn.2xlarge',  # 1x T4 16 GB, 8 vCPUs
+    'g5.xlarge',     # 1x A10G 24 GB
+    'p3.2xlarge',    # 1x V100 16 GB
+]
 
 SSH_CONFIG_PATH = Path.home() / '.ssh' / 'config'
 
@@ -164,7 +171,12 @@ def prompt_pem_path(key_pair):
     return path if path else default
 
 def get_my_ip():
-    return urllib.request.urlopen('https://checkip.amazonaws.com').read().decode().strip()
+    for url in ['https://checkip.amazonaws.com', 'https://api.ipify.org', 'https://icanhazip.com']:
+        try:
+            return urllib.request.urlopen(url, timeout=5).read().decode().strip()
+        except Exception:
+            continue
+    raise RuntimeError("Could not determine public IP from any source.")
 
 def add_my_ip_to_sg(ec2, instance_id):
     my_ip = get_my_ip()

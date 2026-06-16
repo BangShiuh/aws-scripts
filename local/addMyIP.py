@@ -14,7 +14,12 @@ REGIONS = [
 ]
 
 def get_my_ip():
-    return urllib.request.urlopen('https://checkip.amazonaws.com').read().decode().strip()
+    for url in ['https://checkip.amazonaws.com', 'https://api.ipify.org', 'https://icanhazip.com']:
+        try:
+            return urllib.request.urlopen(url, timeout=5).read().decode().strip()
+        except Exception:
+            continue
+    raise RuntimeError("Could not determine public IP from any source.")
 
 def prompt_region():
     print("Available regions:")
