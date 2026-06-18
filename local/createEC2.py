@@ -276,8 +276,9 @@ def create_instance():
         if boot_source == 'snapshot':
             snapshot_id = snapshot['SnapshotId']
             print(f"\nRegistering temporary AMI from snapshot {snapshot_id}...")
+            import time
             ami_response = ec2.register_image(
-                Name=f'restore-{snapshot_id}',
+                Name=f'restore-{snapshot_id}-{int(time.time())}',
                 RootDeviceName='/dev/xvda',
                 BlockDeviceMappings=[{
                     'DeviceName': '/dev/xvda',
@@ -294,8 +295,11 @@ def create_instance():
             )
             temp_ami_id = ami_response['ImageId']
             ami_id = temp_ami_id
-            ssh_user = 'ec2-user'
             print(f"Temporary AMI registered: {ami_id}")
+
+        if boot_source == 'snapshot' and ssh_alias:
+            user_input = input("\nSSH username for this snapshot (press Enter for default: ubuntu): ").strip()
+            ssh_user = user_input if user_input else 'ubuntu'
         else:
             print(f"\nLooking up latest {os_name} AMI...")
             ami_id = get_latest_ami(region, ssm_param)
@@ -318,18 +322,24 @@ def create_instance():
                 }
             }]
 
-        response = ec2.run_instances(
-            ImageId=ami_id,
-            InstanceType=instance_type,
-            KeyName=key_pair,
-            MinCount=1,
-            MaxCount=1,
-            BlockDeviceMappings=block_device_mappings,
-            TagSpecifications=[{
-                'ResourceType': 'instance',
-                'Tags': [{'Key': 'Name', 'Value': instance_name}]
-            }]
-        )
+        try:
+            response = ec2.run_instances(
+                ImageId=ami_id,
+                InstanceType=instance_type,
+                KeyName=key_pair,
+                MinCount=1,
+                MaxCount=1,
+                BlockDeviceMappings=block_device_mappings,
+                TagSpecifications=[{
+                    'ResourceType': 'instance',
+                    'Tags': [{'Key': 'Name', 'Value': instance_name}]
+                }]
+            )
+        except Exception:
+            if temp_ami_id:
+                ec2.deregister_image(ImageId=temp_ami_id)
+                print(f"Temporary AMI {temp_ami_id} deregistered.")
+            raise
 
         instance = response['Instances'][0]
         instance_id = instance['InstanceId']
@@ -352,7 +362,11 @@ def create_instance():
         public_ip = desc['Reservations'][0]['Instances'][0].get('PublicIpAddress', 'N/A')
 
         print(f"\nAdding your IP to the security group...")
-        add_my_ip_to_sg(ec2, instance_id)
+        try:
+            add_my_ip_to_sg(ec2, instance_id)
+        except Exception as e:
+            print(f"Warning: could not update security group: {e}")
+            print(f"Run 'python local/addMyIP.py' to add your IP manually.")
 
         print(f"\n=== Instance is Running! ===")
         print(f"Public IP:  {public_ip}")

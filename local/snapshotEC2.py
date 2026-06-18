@@ -119,7 +119,7 @@ def create_snapshot():
         waiter = ec2.get_waiter('snapshot_completed')
         waiter.wait(
             SnapshotIds=[snapshot_id],
-            WaiterConfig={'Delay': 15, 'MaxAttempts': 60}
+            WaiterConfig={'Delay': 15, 'MaxAttempts': 180}  # 45 min max
         )
 
         print(f"\n=== Snapshot Complete ===")
