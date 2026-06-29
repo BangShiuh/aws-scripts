@@ -38,7 +38,6 @@ def load() -> dict:
         'access_key': '',
         'secret_key': '',
         'region': DEFAULT_REGION,
-        'ssh_alias': '',
         'pem_path': '',
         'ssh_user': 'ubuntu',
     }

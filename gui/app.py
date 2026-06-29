@@ -62,30 +62,26 @@ class SettingsDialog:
         # ── SSH (optional) ──
         ttk.Label(f, text="SSH Config  (optional)", font=('', 10, 'bold')).grid(
             row=5, column=0, columnspan=2, sticky='w', pady=(0, 3))
-        ttk.Label(f, text="When set, the SSH config is updated automatically on Start / Create.",
+        ttk.Label(f,
+                  text="SSH alias is stored per-instance. Set the .pem file and user here.",
                   foreground='gray').grid(row=6, column=0, columnspan=2, sticky='w', pady=(0, 6))
 
-        ttk.Label(f, text="SSH Alias:").grid(row=7, column=0, sticky='e', padx=(0, 8), pady=3)
-        self._alias = ttk.Entry(f, width=42)
-        self._alias.insert(0, current.get('ssh_alias', ''))
-        self._alias.grid(row=7, column=1, pady=3)
-
-        ttk.Label(f, text=".pem File:").grid(row=8, column=0, sticky='e', padx=(0, 8), pady=3)
+        ttk.Label(f, text=".pem File:").grid(row=7, column=0, sticky='e', padx=(0, 8), pady=3)
         pem_row = ttk.Frame(f)
-        pem_row.grid(row=8, column=1, pady=3, sticky='w')
+        pem_row.grid(row=7, column=1, pady=3, sticky='w')
         self._pem = ttk.Entry(pem_row, width=33)
         self._pem.insert(0, current.get('pem_path', ''))
         self._pem.pack(side='left')
         ttk.Button(pem_row, text="Browse…", command=self._browse).pack(side='left', padx=(4, 0))
 
-        ttk.Label(f, text="SSH User:").grid(row=9, column=0, sticky='e', padx=(0, 8), pady=3)
+        ttk.Label(f, text="SSH User:").grid(row=8, column=0, sticky='e', padx=(0, 8), pady=3)
         self._user = ttk.Entry(f, width=42)
         self._user.insert(0, current.get('ssh_user', 'ubuntu'))
-        self._user.grid(row=9, column=1, pady=3)
+        self._user.grid(row=8, column=1, pady=3)
 
         # ── Buttons ──
         btn_row = ttk.Frame(f)
-        btn_row.grid(row=10, column=0, columnspan=2, pady=(12, 0))
+        btn_row.grid(row=9, column=0, columnspan=2, pady=(12, 0))
         ttk.Button(btn_row, text="Save", command=self._save).pack(side='left', padx=5)
         ttk.Button(btn_row, text="Cancel", command=dlg.destroy).pack(side='left', padx=5)
 
@@ -117,7 +113,6 @@ class SettingsDialog:
             'access_key': ak,
             'secret_key': sk,
             'region':     self._region.get(),
-            'ssh_alias':  self._alias.get().strip(),
             'pem_path':   self._pem.get().strip(),
             'ssh_user':   self._user.get().strip() or 'ubuntu',
         }
@@ -155,15 +150,21 @@ class CreateDialog:
         self._name.insert(0, 'my-ec2')
         self._name.grid(row=1, column=1, pady=4)
 
-        ttk.Label(f, text="Instance Type:").grid(row=2, column=0, sticky='e', **pad)
+        ttk.Label(f, text="SSH Alias:").grid(row=2, column=0, sticky='e', **pad)
+        self._alias = ttk.Entry(f, width=36)
+        self._alias.grid(row=2, column=1, pady=4)
+        ttk.Label(f, text="Optional — used to auto-update ~/.ssh/config",
+                  foreground='gray').grid(row=3, column=1, sticky='w', pady=(0, 4))
+
+        ttk.Label(f, text="Instance Type:").grid(row=4, column=0, sticky='e', **pad)
         self._itype = ttk.Combobox(f, values=cfg.INSTANCE_TYPES, width=33, state='readonly')
         self._itype.set(cfg.INSTANCE_TYPES[0])
-        self._itype.grid(row=2, column=1, pady=4)
+        self._itype.grid(row=4, column=1, pady=4)
 
-        ttk.Label(f, text="Boot Source:").grid(row=3, column=0, sticky='e', **pad)
+        ttk.Label(f, text="Boot Source:").grid(row=5, column=0, sticky='e', **pad)
         self._boot = tk.StringVar(value='fresh')
         boot_row = ttk.Frame(f)
-        boot_row.grid(row=3, column=1, pady=4, sticky='w')
+        boot_row.grid(row=5, column=1, pady=4, sticky='w')
         ttk.Radiobutton(boot_row, text="Fresh instance",
                         variable=self._boot, value='fresh',
                         command=self._toggle).pack(side='left')
@@ -171,28 +172,28 @@ class CreateDialog:
                         variable=self._boot, value='snapshot',
                         command=self._toggle).pack(side='left', padx=(12, 0))
 
-        ttk.Label(f, text="Operating System:").grid(row=4, column=0, sticky='e', **pad)
+        ttk.Label(f, text="Operating System:").grid(row=6, column=0, sticky='e', **pad)
         os_names = [o[0] for o in cfg.OS_OPTIONS]
         self._os_var = tk.StringVar()
         self._os_cb = ttk.Combobox(f, textvariable=self._os_var,
                                     values=os_names, width=33, state='readonly')
         self._os_cb.set(os_names[0])
-        self._os_cb.grid(row=4, column=1, pady=4)
+        self._os_cb.grid(row=6, column=1, pady=4)
 
-        ttk.Label(f, text="Snapshot:").grid(row=5, column=0, sticky='e', **pad)
+        ttk.Label(f, text="Snapshot:").grid(row=7, column=0, sticky='e', **pad)
         self._snap_var = tk.StringVar()
         self._snap_cb = ttk.Combobox(f, textvariable=self._snap_var, width=33, state='readonly')
-        self._snap_cb.grid(row=5, column=1, pady=4)
+        self._snap_cb.grid(row=7, column=1, pady=4)
 
         self._status = ttk.Label(f, text="Loading snapshots…", foreground='gray')
-        self._status.grid(row=6, column=0, columnspan=2, pady=(4, 0))
+        self._status.grid(row=8, column=0, columnspan=2, pady=(4, 0))
 
         self._prog = ttk.Progressbar(f, mode='indeterminate', length=320)
-        self._prog.grid(row=7, column=0, columnspan=2, pady=4)
+        self._prog.grid(row=9, column=0, columnspan=2, pady=4)
         self._prog.grid_remove()
 
         btn_row = ttk.Frame(f)
-        btn_row.grid(row=8, column=0, columnspan=2, pady=(8, 0))
+        btn_row.grid(row=10, column=0, columnspan=2, pady=(8, 0))
         self._create_btn = ttk.Button(btn_row, text="Create", command=self._create)
         self._create_btn.pack(side='left', padx=5)
         ttk.Button(btn_row, text="Cancel", command=dlg.destroy).pack(side='left', padx=5)
@@ -229,6 +230,7 @@ class CreateDialog:
     def _create(self):
         kp = self._kp.get().strip()
         name = self._name.get().strip()
+        alias = self._alias.get().strip()
         itype = self._itype.get()
         boot = self._boot.get()
 
@@ -267,17 +269,19 @@ class CreateDialog:
                     volume_size=cfg.DEFAULT_VOLUME_SIZE,
                     boot_source=boot,
                     snapshot_id=snapshot_id,
+                    ssh_alias=alias,
                     progress_cb=update_status,
                 )
-                self._dlg.after(0, lambda: self._done(result))
+                self._dlg.after(0, lambda: self._done(result, alias))
             except Exception as e:
                 self._dlg.after(0, lambda: self._error(str(e)))
 
         threading.Thread(target=run, daemon=True).start()
 
-    def _done(self, result):
+    def _done(self, result, alias: str):
         self._dlg.destroy()
-        self._on_created(*result)
+        instance_id, public_ip, ssh_user = result
+        self._on_created(instance_id, public_ip, ssh_user, alias)
 
     def _error(self, msg: str):
         self._prog.stop()
@@ -299,8 +303,8 @@ class App:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("EC2 Manager")
-        self.root.minsize(800, 480)
-        self.root.geometry("960x540")
+        self.root.minsize(860, 480)
+        self.root.geometry("1020x540")
 
         self._config = cfg.load()
         self._session = None
@@ -332,13 +336,19 @@ class App:
         table_frame = ttk.Frame(self.root, padding=(8, 6))
         table_frame.pack(fill='both', expand=True)
 
-        cols = ('name', 'id', 'type', 'state', 'ip')
+        cols = ('name', 'id', 'type', 'state', 'ip', 'ssh_alias')
         self._tree = ttk.Treeview(table_frame, columns=cols, show='headings', selectmode='browse')
-        headers = {'name': ('Name', 160), 'id': ('Instance ID', 200),
-                   'type': ('Type', 110), 'state': ('State', 90), 'ip': ('Public IP', 140)}
+        headers = {
+            'name':      ('Name',       160),
+            'id':        ('Instance ID', 200),
+            'type':      ('Type',        110),
+            'state':     ('State',        90),
+            'ip':        ('Public IP',   140),
+            'ssh_alias': ('SSH Alias',   120),
+        }
         for col, (label, width) in headers.items():
-            self._tree.heading(col, text=label)
-            self._tree.column(col, width=width, minwidth=60)
+            self._tree.heading(col, text=label, anchor='w')
+            self._tree.column(col, width=width, minwidth=60, anchor='w')
 
         for state, color in self._STATE_COLORS.items():
             self._tree.tag_configure(state, foreground=color)
@@ -354,15 +364,16 @@ class App:
         btn_frame = ttk.Frame(self.root, padding=(8, 5))
         btn_frame.pack(fill='x', side='bottom')
 
-        self._btn_start    = ttk.Button(btn_frame, text="Start",      command=self._start)
-        self._btn_stop     = ttk.Button(btn_frame, text="Stop",       command=self._stop)
-        self._btn_snapshot = ttk.Button(btn_frame, text="Snapshot",   command=self._snapshot)
-        self._btn_add_ip   = ttk.Button(btn_frame, text="Add My IP",  command=self._add_ip)
-        self._btn_delete   = ttk.Button(btn_frame, text="Delete",     command=self._delete)
-        self._btn_create   = ttk.Button(btn_frame, text="Create New Instance", command=self._create)
+        self._btn_start     = ttk.Button(btn_frame, text="Start",         command=self._start)
+        self._btn_stop      = ttk.Button(btn_frame, text="Stop",          command=self._stop)
+        self._btn_snapshot  = ttk.Button(btn_frame, text="Snapshot",      command=self._snapshot)
+        self._btn_add_ip    = ttk.Button(btn_frame, text="Add My IP",     command=self._add_ip)
+        self._btn_set_alias = ttk.Button(btn_frame, text="Set SSH Alias", command=self._set_alias)
+        self._btn_delete    = ttk.Button(btn_frame, text="Delete",        command=self._delete)
+        self._btn_create    = ttk.Button(btn_frame, text="Create New Instance", command=self._create)
 
         for btn in (self._btn_start, self._btn_stop, self._btn_snapshot,
-                    self._btn_add_ip, self._btn_delete):
+                    self._btn_add_ip, self._btn_set_alias, self._btn_delete):
             btn.pack(side='left', padx=3)
         self._btn_create.pack(side='right', padx=3)
 
@@ -412,6 +423,7 @@ class App:
         self._btn_stop.config(state=s(state == 'running'))
         self._btn_snapshot.config(state=s(state in ('running', 'stopped')))
         self._btn_add_ip.config(state=s(state == 'running'))
+        self._btn_set_alias.config(state=s(state in ('running', 'stopped', 'pending', 'stopping')))
         self._btn_delete.config(state=s(state in ('running', 'stopped')))
         self._btn_create.config(state='normal' if not self._busy else 'disabled')
 
@@ -420,7 +432,7 @@ class App:
         if not sel:
             return None
         v = self._tree.item(sel[0])['values']
-        return {'name': v[0], 'id': v[1], 'type': v[2], 'state': v[3], 'ip': v[4]}
+        return {'name': v[0], 'id': v[1], 'type': v[2], 'state': v[3], 'ip': v[4], 'ssh_alias': v[5]}
 
     # ── Async helper ──────────────────────────────────────────────────────────
 
@@ -462,8 +474,8 @@ class App:
             for inst in instances:
                 tag = inst['state'] if inst['state'] in self._STATE_COLORS else ''
                 self._tree.insert('', 'end',
-                                  values=(inst['name'], inst['id'],
-                                          inst['type'], inst['state'], inst['ip']),
+                                  values=(inst['name'], inst['id'], inst['type'],
+                                          inst['state'], inst['ip'], inst['ssh_alias']),
                                   tags=(tag,))
             n = len(instances)
             self._set_status(f"{n} instance{'s' if n != 1 else ''} found  —  click an action button to manage")
@@ -494,7 +506,7 @@ class App:
 
         def done(ip):
             self._end_busy(f"'{inst['name']}' is running  —  IP: {ip}")
-            self._maybe_update_ssh(ip, self._config.get('ssh_user', 'ubuntu'))
+            self._maybe_update_ssh(inst['ssh_alias'], ip, self._config.get('ssh_user', 'ubuntu'))
             self._refresh()
 
         self._run(fn, done)
@@ -565,6 +577,30 @@ class App:
 
         self._run(fn, done)
 
+    def _set_alias(self):
+        inst = self._selected()
+        if not inst:
+            return
+        current_alias = inst['ssh_alias'] or ''
+        new_alias = self._ask_string(
+            "Set SSH Alias",
+            f"SSH alias for '{inst['name']}':\n(matches the Host name in ~/.ssh/config)",
+            current_alias,
+        )
+        if new_alias is None:
+            return
+
+        self._start_busy(f"Saving SSH alias for '{inst['name']}'…")
+
+        def fn():
+            aws.set_ssh_alias_tag(self._session, inst['id'], new_alias)
+
+        def done(_):
+            self._end_busy(f"SSH alias set to '{new_alias}'." if new_alias else "SSH alias cleared.")
+            self._refresh()
+
+        self._run(fn, done)
+
     def _delete(self):
         inst = self._selected()
         if not inst:
@@ -608,12 +644,12 @@ class App:
             return
         CreateDialog(self.root, self._session, self._config, self._on_created)
 
-    def _on_created(self, instance_id: str, public_ip: str, ssh_user: str):
-        self._maybe_update_ssh(public_ip, ssh_user)
+    def _on_created(self, instance_id: str, public_ip: str, ssh_user: str, alias: str):
+        self._maybe_update_ssh(alias, public_ip, ssh_user)
         self._refresh()
         msg = f"Instance created!\n\nPublic IP: {public_ip}"
-        if self._config.get('ssh_alias'):
-            msg += f"\nSSH: ssh {self._config['ssh_alias']}"
+        if alias:
+            msg += f"\nSSH: ssh {alias}"
         messagebox.showinfo("Instance created", msg, parent=self.root)
 
     # ── Settings ──────────────────────────────────────────────────────────────
@@ -628,8 +664,7 @@ class App:
 
     # ── Utilities ─────────────────────────────────────────────────────────────
 
-    def _maybe_update_ssh(self, ip: str, ssh_user: str):
-        alias = self._config.get('ssh_alias')
+    def _maybe_update_ssh(self, alias: str, ip: str, ssh_user: str):
         pem = self._config.get('pem_path')
         if alias and pem and ip and ip != 'N/A':
             try:

@@ -34,6 +34,13 @@ def _get_instance_name(instance: dict) -> str:
     return '(no name)'
 
 
+def _get_tag(instance: dict, key: str) -> str:
+    for tag in instance.get('Tags', []):
+        if tag['Key'] == key:
+            return tag['Value']
+    return ''
+
+
 def _get_root_volume_id(instance: dict) -> Optional[str]:
     root_device = instance.get('RootDeviceName', '/dev/xvda')
     for mapping in instance.get('BlockDeviceMappings', []):
@@ -86,13 +93,19 @@ def list_instances(session: boto3.Session) -> list[dict]:
     for res in response['Reservations']:
         for inst in res['Instances']:
             result.append({
-                'id':    inst['InstanceId'],
-                'name':  _get_instance_name(inst),
-                'type':  inst['InstanceType'],
-                'state': inst['State']['Name'],
-                'ip':    inst.get('PublicIpAddress', '—'),
+                'id':        inst['InstanceId'],
+                'name':      _get_instance_name(inst),
+                'type':      inst['InstanceType'],
+                'state':     inst['State']['Name'],
+                'ip':        inst.get('PublicIpAddress', '—'),
+                'ssh_alias': _get_tag(inst, 'SSHAlias'),
             })
     return result
+
+
+def set_ssh_alias_tag(session: boto3.Session, instance_id: str, alias: str) -> None:
+    ec2 = session.client('ec2')
+    ec2.create_tags(Resources=[instance_id], Tags=[{'Key': 'SSHAlias', 'Value': alias}])
 
 
 def start_instance(session: boto3.Session, instance_id: str,
@@ -193,6 +206,7 @@ def create_instance(session: boto3.Session, key_name: str, instance_name: str,
                     instance_type: str, os_option: Optional[tuple],
                     volume_size: int = 30, boot_source: str = 'fresh',
                     snapshot_id: Optional[str] = None,
+                    ssh_alias: str = '',
                     progress_cb: Optional[Callable] = None) -> tuple[str, str, str]:
     ec2 = session.client('ec2')
     temp_ami_id = None
@@ -239,6 +253,10 @@ def create_instance(session: boto3.Session, key_name: str, instance_name: str,
             'Ebs': {'VolumeSize': volume_size, 'VolumeType': 'gp3', 'DeleteOnTermination': True}
         }]
 
+    tags = [{'Key': 'Name', 'Value': instance_name}]
+    if ssh_alias:
+        tags.append({'Key': 'SSHAlias', 'Value': ssh_alias})
+
     try:
         resp = ec2.run_instances(
             ImageId=ami_id,
@@ -247,10 +265,7 @@ def create_instance(session: boto3.Session, key_name: str, instance_name: str,
             MinCount=1,
             MaxCount=1,
             BlockDeviceMappings=block_devices,
-            TagSpecifications=[{
-                'ResourceType': 'instance',
-                'Tags': [{'Key': 'Name', 'Value': instance_name}]
-            }]
+            TagSpecifications=[{'ResourceType': 'instance', 'Tags': tags}]
         )
     except Exception:
         if temp_ami_id:
