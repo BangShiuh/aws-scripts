@@ -371,8 +371,10 @@ def create_instance():
         print(f"\n=== Instance is Running! ===")
         print(f"Public IP:  {public_ip}")
 
-        if ssh_alias and public_ip != 'N/A':
-            update_ssh_config(ssh_alias, public_ip, pem_path, ssh_user)
+        if ssh_alias:
+            ec2.create_tags(Resources=[instance_id], Tags=[{'Key': 'SSHAlias', 'Value': ssh_alias}])
+            if public_ip != 'N/A':
+                update_ssh_config(ssh_alias, public_ip, pem_path, ssh_user)
             print(f"\nTo connect via SSH:")
             print(f"  ssh {ssh_alias}")
         else:

@@ -167,6 +167,11 @@ def start_instance():
             if matches:
                 for alias in matches:
                     update_ssh_config(alias, public_ip)
+                try:
+                    ec2.create_tags(Resources=[instance_id],
+                                    Tags=[{'Key': 'SSHAlias', 'Value': matches[0]}])
+                except Exception:
+                    pass
             else:
                 print(f"No SSH alias matching '{name}' found in config — skipping SSH config update.")
 

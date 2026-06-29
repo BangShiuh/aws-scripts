@@ -82,6 +82,36 @@ def _add_ip_to_sg(ec2, instance_id: str) -> str:
     return my_ip
 
 
+def _find_alias_from_ssh_config(instance_name: str, public_ip: str) -> str:
+    """Scan ~/.ssh/config and return the Host alias that matches by IP or instance name."""
+    if not SSH_CONFIG_PATH.exists():
+        return ''
+    try:
+        content = SSH_CONFIG_PATH.read_text(encoding='utf-8-sig')
+    except Exception:
+        return ''
+
+    # Split into per-host blocks
+    blocks = re.split(r'(?=^Host\s)', content, flags=re.MULTILINE)
+
+    # First pass: match by HostName IP (most reliable — works for running instances)
+    if public_ip:
+        for block in blocks:
+            m = re.match(r'^Host\s+(\S+)', block)
+            hn = re.search(r'^\s+HostName\s+(\S+)', block, re.MULTILINE)
+            if m and hn and hn.group(1) == public_ip:
+                return m.group(1)
+
+    # Second pass: match by instance name substring in alias (works for stopped instances)
+    if instance_name and instance_name != '(no name)':
+        for block in blocks:
+            m = re.match(r'^Host\s+(\S+)', block)
+            if m and instance_name.lower() in m.group(1).lower():
+                return m.group(1)
+
+    return ''
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def list_instances(session: boto3.Session) -> list[dict]:
@@ -92,13 +122,16 @@ def list_instances(session: boto3.Session) -> list[dict]:
     result = []
     for res in response['Reservations']:
         for inst in res['Instances']:
+            name = _get_instance_name(inst)
+            ip = inst.get('PublicIpAddress', '')
+            ssh_alias = _get_tag(inst, 'SSHAlias') or _find_alias_from_ssh_config(name, ip)
             result.append({
                 'id':        inst['InstanceId'],
-                'name':      _get_instance_name(inst),
+                'name':      name,
                 'type':      inst['InstanceType'],
                 'state':     inst['State']['Name'],
-                'ip':        inst.get('PublicIpAddress', '—'),
-                'ssh_alias': _get_tag(inst, 'SSHAlias'),
+                'ip':        ip or '—',
+                'ssh_alias': ssh_alias,
             })
     return result
 
