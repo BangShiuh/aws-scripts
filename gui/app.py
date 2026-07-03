@@ -587,6 +587,11 @@ class App:
                                   values=(inst['name'], inst['id'], inst['type'],
                                           inst['state'], inst['ip'], inst['ssh_alias']),
                                   tags=(tag,))
+                if inst['state'] == 'running' and inst['ssh_alias'] and inst['ip'] not in ('', '—'):
+                    self._maybe_update_ssh(
+                        inst['ssh_alias'], inst['ip'],
+                        self._config.get('ssh_user', 'ubuntu'),
+                    )
             n = len(instances)
             self._set_status(f"{n} instance{'s' if n != 1 else ''} found  —  click an action button to manage")
             self._sync_buttons()
