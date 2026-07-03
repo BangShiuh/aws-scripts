@@ -363,7 +363,14 @@ def delete_instance(session: boto3.Session, instance_id: str,
 
 
 def update_ssh_config(alias: str, hostname: str, pem_path: str, ssh_user: str) -> None:
+    """Update (or create) a Host block in ~/.ssh/config.
+
+    If the alias already exists, only the HostName line is updated so that
+    any custom options (ForwardAgent, LocalForward, etc.) are preserved.
+    A new block is written from scratch only when the alias is not found.
+    """
     SSH_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+
     new_block = (
         f"Host {alias}\n"
         f"    HostName {hostname}\n"
@@ -378,12 +385,30 @@ def update_ssh_config(alias: str, hostname: str, pem_path: str, ssh_user: str) -
         return
 
     content = SSH_CONFIG_PATH.read_text(encoding='utf-8-sig')
-    pattern = rf'^Host {re.escape(alias)}\s*\n(?:[ \t]+.*\n?)*'
-    match = re.search(pattern, content, re.MULTILINE)
+    block_pattern = rf'^Host {re.escape(alias)}\s*\n(?:[ \t]+.*\n?)*'
+    match = re.search(block_pattern, content, re.MULTILINE)
 
     if match:
-        updated = content[:match.start()] + new_block + '\n' + content[match.end():]
-        SSH_CONFIG_PATH.write_text(updated, encoding='utf-8')
+        # Only patch the HostName line — leave everything else intact
+        existing_block = match.group(0)
+        if re.search(r'^\s+HostName\s+', existing_block, re.MULTILINE):
+            updated_block = re.sub(
+                r'([ \t]+HostName[ \t]+)\S+',
+                rf'\g<1>{hostname}',
+                existing_block,
+            )
+        else:
+            # HostName line missing — insert it after the Host line
+            updated_block = re.sub(
+                rf'^(Host {re.escape(alias)}[^\n]*\n)',
+                rf'\1    HostName {hostname}\n',
+                existing_block,
+                flags=re.MULTILINE,
+            )
+        SSH_CONFIG_PATH.write_text(
+            content[:match.start()] + updated_block + content[match.end():],
+            encoding='utf-8',
+        )
     else:
         with open(SSH_CONFIG_PATH, 'a', encoding='utf-8') as f:
             f.write(f'\n{new_block}')
