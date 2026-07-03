@@ -20,6 +20,104 @@ def _center(win: tk.Toplevel, parent: tk.Tk | tk.Toplevel) -> None:
     win.geometry(f"+{px + (pw - w) // 2}+{py + (ph - h) // 2}")
 
 
+# ── Help dialog ──────────────────────────────────────────────────────────────
+
+class HelpDialog:
+    def __init__(self, parent: tk.Tk):
+        dlg = tk.Toplevel(parent)
+        dlg.title("EC2 Manager — Help")
+        dlg.transient(parent)
+        dlg.grab_set()
+        dlg.resizable(False, False)
+
+        nb = ttk.Notebook(dlg)
+        nb.pack(fill='both', expand=True, padx=10, pady=(10, 0))
+
+        def tab(title, lines):
+            f = ttk.Frame(nb, padding=15)
+            nb.add(f, text=title)
+            text = tk.Text(f, width=58, height=20, wrap='word',
+                           relief='flat', background=dlg.cget('background'),
+                           font=('', 10), cursor='arrow')
+            text.pack(fill='both', expand=True)
+            text.tag_configure('h', font=('', 10, 'bold'), spacing3=4)
+            text.tag_configure('bullet', lmargin1=12, lmargin2=24)
+            text.tag_configure('note', foreground='gray', font=('', 9))
+            for kind, content in lines:
+                text.insert('end', content + '\n', kind)
+            text.config(state='disabled')
+
+        tab("Getting Started", [
+            ('h',      'Step 1 — Enter your AWS credentials'),
+            ('bullet', '• Click Settings (top-right corner)'),
+            ('bullet', '• Paste your Access Key ID and Secret Access Key'),
+            ('bullet', '• Pick your region and click Save'),
+            ('',       ''),
+            ('h',      'Step 2 — View your instances'),
+            ('bullet', '• Your EC2 instances appear in the table'),
+            ('bullet', '• Green = running,  Red = stopped'),
+            ('bullet', '• Click Refresh to update the list'),
+            ('',       ''),
+            ('h',      'Step 3 — Manage an instance'),
+            ('bullet', '• Click a row to select it'),
+            ('bullet', '• Use the buttons at the bottom to act on it'),
+        ])
+
+        tab("Buttons", [
+            ('h',      'Start'),
+            ('bullet', '• Powers on a stopped instance'),
+            ('bullet', '• Automatically adds your current IP to the firewall'),
+            ('',       ''),
+            ('h',      'Stop'),
+            ('bullet', '• Powers off a running instance'),
+            ('note',   '  Note: the public IP changes each time you start again'),
+            ('',       ''),
+            ('h',      'Snapshot'),
+            ('bullet', '• Saves a full backup of your instance disk'),
+            ('bullet', '• Use before major changes or before Delete'),
+            ('',       ''),
+            ('h',      'Add My IP'),
+            ('bullet', '• Adds your current network IP to the firewall'),
+            ('bullet', '• Use this when you switch networks (e.g. home → lab)'),
+            ('',       ''),
+            ('h',      'Set SSH Alias'),
+            ('bullet', '• Links this instance to a name in ~/.ssh/config'),
+            ('bullet', '• The app updates the IP automatically on every Start'),
+            ('',       ''),
+            ('h',      'Delete'),
+            ('bullet', '• Permanently removes the instance'),
+            ('bullet', '• You will be asked to snapshot first (recommended)'),
+            ('',       ''),
+            ('h',      'Create New Instance'),
+            ('bullet', '• Launches a fresh EC2 instance'),
+            ('bullet', '• Enter your key pair name, instance name, and SSH alias'),
+        ])
+
+        tab("SSH / VS Code", [
+            ('h',      'What you need'),
+            ('bullet', '• VS Code with the Remote - SSH extension installed'),
+            ('bullet', '• Your .pem private key file (downloaded from AWS)'),
+            ('',       ''),
+            ('h',      'One-time setup'),
+            ('bullet', '1. Open Settings → set .pem File path and SSH User'),
+            ('note',   '   SSH User is usually "ubuntu" for Ubuntu instances'),
+            ('bullet', '2. Select your instance → click Set SSH Alias'),
+            ('bullet', '3. Type the Host name you want (e.g.  my-ec2)'),
+            ('',       ''),
+            ('h',      'After setup'),
+            ('bullet', '• Start your instance from this app'),
+            ('bullet', '• The app writes the new IP to ~/.ssh/config automatically'),
+            ('bullet', '• In VS Code: Remote Explorer → connect to your alias'),
+            ('',       ''),
+            ('note',   'If the IP is wrong in VS Code, click Add My IP in this\n'
+                       'app, then reconnect in VS Code.'),
+        ])
+
+        ttk.Button(dlg, text="Close", command=dlg.destroy).pack(pady=10)
+        dlg.bind('<Escape>', lambda _: dlg.destroy())
+        _center(dlg, parent)
+
+
 # ── Settings dialog ───────────────────────────────────────────────────────────
 
 class SettingsDialog:
@@ -38,50 +136,61 @@ class SettingsDialog:
 
         # ── Credentials ──
         ttk.Label(f, text="AWS Credentials", font=('', 10, 'bold')).grid(
-            row=0, column=0, columnspan=2, sticky='w', pady=(0, 6))
+            row=0, column=0, columnspan=2, sticky='w', pady=(0, 4))
 
-        ttk.Label(f, text="Access Key ID:").grid(row=1, column=0, sticky='e', padx=(0, 8), pady=3)
+        instr = (
+            "How to get your credentials:\n"
+            "  1. Go to console.aws.amazon.com\n"
+            "  2. Click your name (top-right) → Security credentials\n"
+            "  3. Scroll to Access keys → Create access key\n"
+            "  4. Choose Local code → Next → Create access key\n"
+            "  5. Copy both values below  (the secret is shown only once)"
+        )
+        ttk.Label(f, text=instr, foreground='gray', justify='left').grid(
+            row=1, column=0, columnspan=2, sticky='w', pady=(0, 8))
+
         self._ak = ttk.Entry(f, width=42)
         self._ak.insert(0, current.get('access_key', ''))
-        self._ak.grid(row=1, column=1, pady=3)
+        self._ak.grid(row=2, column=1, pady=3)
 
-        ttk.Label(f, text="Secret Access Key:").grid(row=2, column=0, sticky='e', padx=(0, 8), pady=3)
+        ttk.Label(f, text="Secret Access Key:").grid(row=3, column=0, sticky='e', padx=(0, 8), pady=3)
         self._sk = ttk.Entry(f, width=42, show='*')
         self._sk.insert(0, current.get('secret_key', ''))
-        self._sk.grid(row=2, column=1, pady=3)
+        self._sk.grid(row=3, column=1, pady=3)
 
-        ttk.Label(f, text="Region:").grid(row=3, column=0, sticky='e', padx=(0, 8), pady=3)
+        ttk.Label(f, text="Region:").grid(row=4, column=0, sticky='e', padx=(0, 8), pady=3)
         self._region = tk.StringVar(value=current.get('region', cfg.DEFAULT_REGION))
         ttk.Combobox(f, textvariable=self._region,
                      values=[r[0] for r in cfg.REGIONS],
-                     width=39, state='readonly').grid(row=3, column=1, pady=3)
+                     width=39, state='readonly').grid(row=4, column=1, pady=3)
 
         ttk.Separator(f, orient='horizontal').grid(
-            row=4, column=0, columnspan=2, sticky='ew', pady=10)
+            row=5, column=0, columnspan=2, sticky='ew', pady=10)
 
         # ── SSH (optional) ──
         ttk.Label(f, text="SSH Config  (optional)", font=('', 10, 'bold')).grid(
-            row=5, column=0, columnspan=2, sticky='w', pady=(0, 3))
+            row=6, column=0, columnspan=2, sticky='w', pady=(0, 3))
         ttk.Label(f,
-                  text="SSH alias is stored per-instance. Set the .pem file and user here.",
-                  foreground='gray').grid(row=6, column=0, columnspan=2, sticky='w', pady=(0, 6))
+                  text="SSH alias is stored per-instance (use Set SSH Alias in the main window).\n"
+                       "Set the .pem file and SSH user here — they apply to all your instances.",
+                  foreground='gray', justify='left').grid(row=7, column=0, columnspan=2, sticky='w', pady=(0, 6))
 
-        ttk.Label(f, text=".pem File:").grid(row=7, column=0, sticky='e', padx=(0, 8), pady=3)
+        ttk.Label(f, text=".pem File:").grid(row=8, column=0, sticky='e', padx=(0, 8), pady=3)
         pem_row = ttk.Frame(f)
-        pem_row.grid(row=7, column=1, pady=3, sticky='w')
+        pem_row.grid(row=8, column=1, pady=3, sticky='w')
         self._pem = ttk.Entry(pem_row, width=33)
         self._pem.insert(0, current.get('pem_path', ''))
         self._pem.pack(side='left')
         ttk.Button(pem_row, text="Browse…", command=self._browse).pack(side='left', padx=(4, 0))
 
-        ttk.Label(f, text="SSH User:").grid(row=8, column=0, sticky='e', padx=(0, 8), pady=3)
+        ttk.Label(f, text="SSH User:").grid(row=9, column=0, sticky='e', padx=(0, 8), pady=3)
         self._user = ttk.Entry(f, width=42)
         self._user.insert(0, current.get('ssh_user', 'ubuntu'))
-        self._user.grid(row=8, column=1, pady=3)
+        self._user.grid(row=9, column=1, pady=3)
 
         # ── Buttons ──
         btn_row = ttk.Frame(f)
-        btn_row.grid(row=9, column=0, columnspan=2, pady=(12, 0))
+        btn_row.grid(row=10, column=0, columnspan=2, pady=(12, 0))
         ttk.Button(btn_row, text="Save", command=self._save).pack(side='left', padx=5)
         ttk.Button(btn_row, text="Cancel", command=dlg.destroy).pack(side='left', padx=5)
 
@@ -327,6 +436,7 @@ class App:
         ttk.Label(toolbar, text="EC2 Manager", font=('', 13, 'bold')).pack(side='left')
         ttk.Button(toolbar, text="Settings", command=self._show_settings).pack(side='right', padx=3)
         ttk.Button(toolbar, text="Refresh", command=self._refresh).pack(side='right', padx=3)
+        ttk.Button(toolbar, text="Help", command=lambda: HelpDialog(self.root)).pack(side='right', padx=3)
         self._region_lbl = ttk.Label(toolbar, text="", foreground='gray')
         self._region_lbl.pack(side='right', padx=12)
 
