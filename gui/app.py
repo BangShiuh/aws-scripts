@@ -500,6 +500,7 @@ class App:
         self._status_lbl = tk.Label(bottom, textvariable=self._status_var,
                                     relief='sunken', anchor='w', padx=6, pady=2)
         self._status_lbl.grid(row=1, column=0, sticky='ew')
+        self._default_fg = self._status_lbl.cget('foreground')
 
         self._sync_buttons()
 
@@ -507,7 +508,7 @@ class App:
 
     def _set_status(self, msg: str, error: bool = False):
         self._status_var.set(msg)
-        self._status_lbl.config(foreground='red' if error else '')
+        self._status_lbl.config(foreground='red' if error else self._default_fg)
         self.root.update_idletasks()
 
     def _start_busy(self, msg: str = "Working…"):
