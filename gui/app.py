@@ -555,10 +555,14 @@ class App:
                 result = fn()
                 self.root.after(0, lambda: on_done(result))
             except Exception as e:
+                exc = e
                 err_msg = str(e)
                 def _handle_err():
                     self._end_busy(f"Error: {err_msg}", error=True)
-                self.root.after(0, on_error or _handle_err)
+                if on_error:
+                    self.root.after(0, lambda: on_error(exc))
+                else:
+                    self.root.after(0, _handle_err)
         threading.Thread(target=_thread, daemon=True).start()
 
     # ── Networking ────────────────────────────────────────────────────────────
@@ -694,7 +698,31 @@ class App:
         def done(my_ip):
             self._end_busy(f"SSH access granted for {my_ip}.")
 
-        self._run(fn, done)
+        def on_error(exc):
+            if "all services blocked" in str(exc) or "Could not detect your public IP" in str(exc):
+                self._end_busy("Could not auto-detect your IP — please enter it manually.", error=True)
+                manual_ip = self._ask_string(
+                    "Enter Your IP Address",
+                    "Your network blocks IP-check services.\n\n"
+                    "Find your IP at  whatismyip.com  or check your network settings,\n"
+                    "then type it below (e.g. 140.116.201.79):",
+                )
+                if not manual_ip:
+                    return
+                manual_ip = manual_ip.strip()
+                self._start_busy(f"Authorizing {manual_ip}…")
+
+                def fn2():
+                    return aws.add_my_ip_manual(
+                        self._session, inst['id'], manual_ip,
+                        progress_cb=lambda m: self.root.after(0, lambda: self._set_status(m)),
+                    )
+
+                self._run(fn2, lambda ip: self._end_busy(f"SSH access granted for {ip}."))
+            else:
+                self._end_busy(f"Error: {exc}", error=True)
+
+        self._run(fn, done, on_error=on_error)
 
     def _set_alias(self):
         inst = self._selected()

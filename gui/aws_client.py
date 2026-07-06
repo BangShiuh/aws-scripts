@@ -19,12 +19,25 @@ def get_session(access_key: str, secret_key: str, region: str) -> boto3.Session:
 
 
 def get_my_ip() -> str:
-    for url in ['https://checkip.amazonaws.com', 'https://api.ipify.org', 'https://icanhazip.com']:
+    urls = [
+        'https://checkip.amazonaws.com',
+        'https://api.ipify.org',
+        'https://icanhazip.com',
+        'https://ifconfig.me/ip',
+        'https://ipecho.net/plain',
+        'http://checkip.amazonaws.com',   # plain HTTP fallback
+    ]
+    errors = []
+    for url in urls:
         try:
             return urllib.request.urlopen(url, timeout=5).read().decode().strip()
-        except Exception:
-            continue
-    raise RuntimeError("Could not determine your public IP address.")
+        except Exception as e:
+            errors.append(f"{url}: {e}")
+    raise RuntimeError(
+        "Could not detect your public IP (all services blocked).\n"
+        "Please enter your IP manually.\n\n"
+        "Errors:\n" + "\n".join(errors)
+    )
 
 
 def _get_instance_name(instance: dict) -> str:
@@ -52,10 +65,8 @@ def _get_root_volume_id(instance: dict) -> Optional[str]:
     return None
 
 
-def _add_ip_to_sg(ec2, instance_id: str) -> str:
-    my_ip = get_my_ip()
+def _add_cidr_to_sg(ec2, instance_id: str, my_ip: str) -> None:
     my_cidr = f'{my_ip}/32'
-
     desc = ec2.describe_instances(InstanceIds=[instance_id])
     sg_ids = [sg['GroupId'] for sg in desc['Reservations'][0]['Instances'][0]['SecurityGroups']]
 
@@ -80,6 +91,11 @@ def _add_ip_to_sg(ec2, instance_id: str) -> str:
             except ClientError as e:
                 if e.response['Error']['Code'] != 'InvalidPermission.Duplicate':
                     raise
+
+
+def _add_ip_to_sg(ec2, instance_id: str) -> str:
+    my_ip = get_my_ip()
+    _add_cidr_to_sg(ec2, instance_id, my_ip)
     return my_ip
 
 
@@ -181,6 +197,15 @@ def add_my_ip(session: boto3.Session, instance_id: str,
     if progress_cb:
         progress_cb("Getting your public IP…")
     return _add_ip_to_sg(ec2, instance_id)
+
+
+def add_my_ip_manual(session: boto3.Session, instance_id: str, my_ip: str,
+                     progress_cb: Optional[Callable] = None) -> str:
+    ec2 = session.client('ec2')
+    if progress_cb:
+        progress_cb(f"Authorizing {my_ip} in security group…")
+    _add_cidr_to_sg(ec2, instance_id, my_ip)
+    return my_ip
 
 
 def snapshot_instance(session: boto3.Session, instance_id: str, description: str,
