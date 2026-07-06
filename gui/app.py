@@ -497,15 +497,17 @@ class App:
         self._prog.grid_remove()
 
         self._status_var = tk.StringVar(value="Ready")
-        ttk.Label(bottom, textvariable=self._status_var,
-                  relief='sunken', anchor='w', padding=(6, 2)).grid(row=1, column=0, sticky='ew')
+        self._status_lbl = tk.Label(bottom, textvariable=self._status_var,
+                                    relief='sunken', anchor='w', padx=6, pady=2)
+        self._status_lbl.grid(row=1, column=0, sticky='ew')
 
         self._sync_buttons()
 
     # ── State helpers ─────────────────────────────────────────────────────────
 
-    def _set_status(self, msg: str):
+    def _set_status(self, msg: str, error: bool = False):
         self._status_var.set(msg)
+        self._status_lbl.config(foreground='red' if error else '')
         self.root.update_idletasks()
 
     def _start_busy(self, msg: str = "Working…"):
@@ -515,11 +517,11 @@ class App:
         self._prog.start(10)
         self._sync_buttons()
 
-    def _end_busy(self, msg: str = "Ready"):
+    def _end_busy(self, msg: str = "Ready", error: bool = False):
         self._busy = False
         self._prog.stop()
         self._prog.grid_remove()
-        self._set_status(msg)
+        self._set_status(msg, error=error)
         self._sync_buttons()
 
     def _sync_buttons(self):
@@ -552,9 +554,9 @@ class App:
                 result = fn()
                 self.root.after(0, lambda: on_done(result))
             except Exception as e:
+                err_msg = str(e)
                 def _handle_err():
-                    self._end_busy()
-                    messagebox.showerror("Error", str(e), parent=self.root)
+                    self._end_busy(f"Error: {err_msg}", error=True)
                 self.root.after(0, on_error or _handle_err)
         threading.Thread(target=_thread, daemon=True).start()
 
@@ -678,6 +680,7 @@ class App:
     def _add_ip(self):
         inst = self._selected()
         if not inst:
+            self._set_status("Select an instance first, then click Add My IP.", error=True)
             return
         self._start_busy("Adding your IP to the security group…")
 
