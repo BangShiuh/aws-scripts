@@ -77,8 +77,9 @@ def _add_ip_to_sg(ec2, instance_id: str) -> str:
                         'IpRanges': [{'CidrIp': my_cidr, 'Description': 'auto-added by EC2 Manager'}]
                     }]
                 )
-            except ClientError:
-                pass
+            except ClientError as e:
+                if e.response['Error']['Code'] != 'InvalidPermission.Duplicate':
+                    raise
     return my_ip
 
 
