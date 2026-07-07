@@ -3,3 +3,6 @@ student_credentials.csv
 __pycache__/
 *.pyc
 .env
+# PyInstaller build output
+build/
+dist/
