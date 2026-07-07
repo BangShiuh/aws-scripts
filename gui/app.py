@@ -20,6 +20,33 @@ def _center(win: tk.Toplevel, parent: tk.Tk | tk.Toplevel) -> None:
     win.geometry(f"+{px + (pw - w) // 2}+{py + (ph - h) // 2}")
 
 
+# ── Welcome dialog ───────────────────────────────────────────────────────────
+
+class WelcomeDialog:
+    def __init__(self, parent: tk.Tk):
+        dlg = tk.Toplevel(parent)
+        dlg.title("Welcome")
+        dlg.transient(parent)
+        dlg.grab_set()
+        dlg.resizable(False, False)
+
+        tk.Label(dlg, text="Welcome to EC2 Manager",
+                 font=('', 16, 'bold'), pady=18).pack()
+        tk.Label(dlg, text=(
+            "This app lets you start, stop, and manage your AWS EC2 instances.\n\n"
+            "• Click  Settings  to enter your AWS credentials the first time.\n"
+            "• Click  Refresh  to update the instance list.\n"
+            "• Select an instance and use the buttons below to take action."
+        ), justify='left', padx=24, pady=4).pack()
+
+        ttk.Button(dlg, text="Get Started", command=dlg.destroy).pack(pady=16)
+
+        dlg.bind('<Return>', lambda _: dlg.destroy())
+        dlg.bind('<Escape>', lambda _: dlg.destroy())
+        _center(dlg, parent)
+        dlg.wait_window()
+
+
 # ── Help dialog ──────────────────────────────────────────────────────────────
 
 class HelpDialog:
@@ -420,6 +447,7 @@ class App:
         self._busy = False
 
         self._build_ui()
+        self.root.after(100, lambda: WelcomeDialog(self.root))
 
         if cfg.is_configured(self._config):
             self._connect()
