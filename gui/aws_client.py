@@ -1,4 +1,5 @@
 import re
+import socket
 import time
 import urllib.request
 from pathlib import Path
@@ -38,6 +39,15 @@ def get_my_ip() -> str:
         "Please enter your IP manually.\n\n"
         "Errors:\n" + "\n".join(errors)
     )
+
+
+def check_ssh_reachable(host: str, timeout: float = 4.0) -> bool:
+    """Return True if port 22 on host is reachable from this network."""
+    try:
+        with socket.create_connection((host, 22), timeout=timeout):
+            return True
+    except Exception:
+        return False
 
 
 def _get_instance_name(instance: dict) -> str:

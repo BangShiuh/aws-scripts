@@ -717,14 +717,39 @@ class App:
             return
         self._start_busy("Adding your IP to the security group…")
 
+        inst_ip = inst['ip'] if inst['ip'] != '—' else ''
+
         def fn():
-            return aws.add_my_ip(
+            my_ip = aws.add_my_ip(
                 self._session, inst['id'],
                 progress_cb=lambda m: self.root.after(0, lambda: self._set_status(m)),
             )
+            reachable = None
+            if inst_ip:
+                self.root.after(0, lambda: self._set_status("Checking if port 22 is reachable…"))
+                reachable = aws.check_ssh_reachable(inst_ip)
+            return my_ip, reachable
 
-        def done(my_ip):
-            self._end_busy(f"SSH access granted for {my_ip}.")
+        def done(result):
+            my_ip, reachable = result
+            if reachable is False:
+                self._end_busy(
+                    f"IP {my_ip} added — but port 22 is blocked on this network.  "
+                    "Switch to your phone's mobile hotspot, then click Add My IP again.",
+                    error=True,
+                )
+            else:
+                self._end_busy(f"SSH access granted for {my_ip}. Port 22 is reachable.")
+
+        def _after_manual(ip):
+            if inst_ip:
+                self._set_status("Checking if port 22 is reachable…")
+
+            def fn_check():
+                reachable = aws.check_ssh_reachable(inst_ip) if inst_ip else None
+                return ip, reachable
+
+            self._run(fn_check, done)
 
         def on_error(exc):
             if "all services blocked" in str(exc) or "Could not detect your public IP" in str(exc):
@@ -746,7 +771,7 @@ class App:
                         progress_cb=lambda m: self.root.after(0, lambda: self._set_status(m)),
                     )
 
-                self._run(fn2, lambda ip: self._end_busy(f"SSH access granted for {ip}."))
+                self._run(fn2, _after_manual)
             else:
                 self._end_busy(f"Error: {exc}", error=True)
 
